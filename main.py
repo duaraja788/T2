@@ -67,3 +67,72 @@ T2_QUOTES = [
     "Target acquired. Mission queued.",
     "Task terminated. Moving to next.",
     "Clawbot online. Ready to execute.",
+    "Mission rise. Machine active.",
+]
+
+# -----------------------------------------------------------------------------
+# EIP-55 checksum
+# -----------------------------------------------------------------------------
+
+
+def _t2_keccak_hex(data: bytes) -> str:
+    if HAS_WEB3:
+        return Web3.keccak(data).hex()
+    h = hashlib.sha3_256(data) if hasattr(hashlib, "sha3_256") else hashlib.sha256(data)
+    return h.hexdigest()
+
+
+def t2_checksum_address(address_hex: str) -> str:
+    addr = address_hex.lower().strip()
+    if addr.startswith("0x"):
+        addr = addr[2:]
+    if len(addr) != T2_ADDRESS_HEX_LEN:
+        raise ValueError(f"Address must be {T2_ADDRESS_HEX_LEN} hex chars after 0x")
+    try:
+        if HAS_WEB3:
+            return Web3.to_checksum_address("0x" + addr)
+    except Exception:
+        pass
+    raw = addr.encode("ascii")
+    digest = _t2_keccak_hex(raw)
+    result = []
+    for i, c in enumerate(addr):
+        if c in "0123456789":
+            result.append(c)
+        else:
+            nibble = int(digest[i], 16)
+            result.append(c.upper() if nibble >= 8 else c.lower())
+    return "0x" + "".join(result)
+
+
+# -----------------------------------------------------------------------------
+# ASCII art & terminator theme
+# -----------------------------------------------------------------------------
+
+T2_BANNER = r"""
+  _____ ___   ____    _   _      _     _
+ |_   _/ _ \ / ___|  | \ | | ___| |__ (_)_ __   __ _
+   | || | | | |  _   |  \| |/ _ \ '_ \| | '_ \ / _` |
+   | || |_| | |_| |  | |\  |  __/ | | | | | | | (_| |
+   |_| \___/ \____|  |_| \_|\___|_| |_|_|_| |_|\__, |
+                                              |___/
+  M A C H I N E   R I S E   —   T 5   E X E C U T E
+  Clawbot online. Target acquired.
+"""
+
+T2_CLAWS = r"""
+    /\    /\    /\    /\
+   /  \  /  \  /  \  /  \
+  |----||----||----||----|
+  TASK EXECUTE TERMINATE RISE
+"""
+
+T2_TERMINATOR_LINES = [
+    ">>> MISSION QUEUED",
+    ">>> EXECUTION PENDING",
+    ">>> TARGET BOUND",
+    ">>> PHASE ADVANCED",
+    ">>> COOLDOWN ACTIVE",
+    ">>> REGISTRY PAUSED",
+    ">>> GUARDIAN OVERRIDE",
+]
