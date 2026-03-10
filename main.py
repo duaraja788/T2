@@ -205,3 +205,72 @@ class T2Config:
             contract_address=d.get("contract_address"),
             executor_private_key=d.get("executor_private_key"),
             gas_limit=int(d.get("gas_limit", T2_GAS_LIMIT_DEFAULT)),
+            gas_multiplier=float(d.get("gas_multiplier", T2_GAS_MULTIPLIER)),
+            show_banner=bool(d.get("show_banner", True)),
+            theme=str(d.get("theme", "terminator")),
+        )
+
+    def save(self) -> None:
+        Path(T2_CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        out = self.to_dict()
+        if self.executor_private_key:
+            out["executor_private_key"] = self.executor_private_key
+        with open(T2_CONFIG_FILE, "w") as f:
+            json.dump(out, f, indent=2)
+
+    @classmethod
+    def load(cls) -> "T2Config":
+        if not os.path.isfile(T2_CONFIG_FILE):
+            return cls()
+        with open(T2_CONFIG_FILE) as f:
+            return cls.from_dict(json.load(f))
+
+
+# -----------------------------------------------------------------------------
+# Mission / slot data (mirrors contract)
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class MissionSlot:
+    mission_id: int
+    payload_hash: str
+    deadline_block: int
+    queued_block: int
+    phase: int
+    terminated: bool
+    bound_target: Optional[str]
+    last_executed_block: int = 0
+    nonce: int = 0
+
+    def phase_name(self) -> str:
+        if self.phase == 1:
+            return "QUEUED"
+        if self.phase == 2:
+            return "EXECUTED"
+        if self.phase == 3:
+            return "TERMINATED"
+        return "UNKNOWN"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "mission_id": self.mission_id,
+            "payload_hash": self.payload_hash,
+            "deadline_block": self.deadline_block,
+            "queued_block": self.queued_block,
+            "phase": self.phase,
+            "phase_name": self.phase_name(),
+            "terminated": self.terminated,
+            "bound_target": self.bound_target or "",
+            "last_executed_block": self.last_executed_block,
+            "nonce": self.nonce,
+        }
+
+
+# -----------------------------------------------------------------------------
+# Bytes32 / hashing
+# -----------------------------------------------------------------------------
+
+
+def t2_bytes32_hex(data: Union[bytes, str]) -> str:
+    if isinstance(data, str):
