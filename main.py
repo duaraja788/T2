@@ -412,3 +412,72 @@ class T2ContractClient:
 class T2LocalMissionStore:
     def __init__(self):
         self._missions: Dict[int, MissionSlot] = {}
+        self._next_id = 0
+        self._current_block = 1000
+
+    def next_mission_id(self) -> int:
+        return self._next_id
+
+    def queue(self, payload_hash: str, deadline_block: int) -> int:
+        mid = self._next_id
+        self._next_id += 1
+        self._missions[mid] = MissionSlot(
+            mission_id=mid,
+            payload_hash=payload_hash,
+            deadline_block=deadline_block,
+            queued_block=self._current_block,
+            phase=1,
+            terminated=False,
+            bound_target=None,
+        )
+        return mid
+
+    def execute(self, mission_id: int, result_hash: str) -> bool:
+        if mission_id not in self._missions:
+            return False
+        m = self._missions[mission_id]
+        if m.terminated or m.phase != 1:
+            return False
+        m.phase = 2
+        m.last_executed_block = self._current_block
+        return True
+
+    def terminate(self, mission_id: int) -> bool:
+        if mission_id not in self._missions:
+            return False
+        self._missions[mission_id].terminated = True
+        self._missions[mission_id].phase = 3
+        return True
+
+    def get_mission(self, mission_id: int) -> Optional[MissionSlot]:
+        return self._missions.get(mission_id)
+
+    def set_block(self, block: int) -> None:
+        self._current_block = block
+
+    def list_ids(self) -> List[int]:
+        return sorted(self._missions.keys())
+
+
+# -----------------------------------------------------------------------------
+# CLI commands
+# -----------------------------------------------------------------------------
+
+
+def cmd_status(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore) -> int:
+    print(t2_cyan_text(T2_BANNER) if config.show_banner else "")
+    print(t2_yellow_text(f"  {t2_random_quote()}"))
+    print()
+    if client and client.is_connected():
+        nid = client.next_mission_id()
+        print(t2_green_text(f"  Connected to chain_id={client.chain_id}"))
+        if client.contract_address:
+            print(t2_green_text(f"  Contract: {client.contract_address}"))
+        if nid is not None:
+            print(t2_green_text(f"  Next mission ID: {nid}"))
+        print(t2_green_text(f"  Quote: {client.quote_identifier()}"))
+        if client.version() is not None:
+            print(t2_green_text(f"  Contract version: {client.version()}"))
+        print(t2_green_text(f"  Paused: {client.is_paused()}"))
+    else:
+        print(t2_yellow_text("  No RPC/contract connected. Using local store."))
