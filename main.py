@@ -1033,3 +1033,72 @@ def t2_shorten_hash(h: str, prefix: int = 8, suffix: int = 6) -> str:
 T2_DEMO_PAYLOADS = [
     "terminate_target_alpha",
     "acquire_resource_beta",
+    "execute_phase_gamma",
+    "clawbot_mission_rise",
+    "machine_vanguard_task",
+]
+
+
+def t2_random_demo_payload() -> str:
+    return random.choice(T2_DEMO_PAYLOADS)
+
+
+def cmd_queue_demo(config: T2Config, local: T2LocalMissionStore, count: int, deadline_blocks: int) -> int:
+    for _ in range(count):
+        payload = t2_random_demo_payload()
+        ph = t2_bytes32_hex(payload.encode("utf-8"))
+        current = local._current_block
+        mid = local.queue(ph, current + deadline_blocks)
+        print(t2_green_text(f"  Queued mission_id={mid}  payload={payload}"))
+    print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Contract address validation (EIP-55)
+# -----------------------------------------------------------------------------
+
+
+def t2_normalize_contract_address(addr: Optional[str]) -> Optional[str]:
+    if not addr:
+        return None
+    addr = addr.strip()
+    if not addr.startswith("0x"):
+        addr = "0x" + addr
+    if len(addr) != 42:
+        return None
+    try:
+        return t2_checksum_address(addr)
+    except Exception:
+        return None
+
+
+# -----------------------------------------------------------------------------
+# Config validation
+# -----------------------------------------------------------------------------
+
+
+def t2_validate_config(config: T2Config) -> List[str]:
+    errors = []
+    if not config.rpc_url or not config.rpc_url.startswith("http"):
+        errors.append("rpc_url must be a valid HTTP(S) URL")
+    if config.chain_id < 1:
+        errors.append("chain_id must be positive")
+    if config.contract_address and not t2_validate_address(config.contract_address):
+        errors.append("contract_address must be 0x + 40 hex chars")
+    if config.gas_limit < 21000:
+        errors.append("gas_limit must be >= 21000")
+    return errors
+
+
+def cmd_validate_config(config: T2Config) -> int:
+    errs = t2_validate_config(config)
+    if not errs:
+        print(t2_green_text("  Config valid."))
+        return 0
+    for e in errs:
+        print(t2_red_text(f"  {e}"))
+    return 1
+
+
+# -----------------------------------------------------------------------------
