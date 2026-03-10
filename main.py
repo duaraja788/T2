@@ -1102,3 +1102,72 @@ def cmd_validate_config(config: T2Config) -> int:
 
 
 # -----------------------------------------------------------------------------
+# Mission ID range helpers
+# -----------------------------------------------------------------------------
+
+
+def t2_mission_id_range(next_id: int, limit: int = 100) -> List[int]:
+    if next_id == 0:
+        return []
+    end = min(next_id, limit)
+    return list(range(0, end))
+
+
+# -----------------------------------------------------------------------------
+# Result hash from payload + nonce (mirror contract logic)
+# -----------------------------------------------------------------------------
+
+
+def t2_compute_result_hash(payload_hash: str, execution_digest: str) -> str:
+    combined = payload_hash.encode("utf-8") if isinstance(payload_hash, str) else payload_hash
+    combined += execution_digest.encode("utf-8") if isinstance(execution_digest, str) else execution_digest
+    return t2_bytes32_hex(combined)
+
+
+# -----------------------------------------------------------------------------
+# Banner variants
+# -----------------------------------------------------------------------------
+
+T2_BANNER_MINIMAL = "  T2 | Machine Rise | T5_execute\n  Clawbot online.\n"
+
+
+def t2_get_banner(minimal: bool = False) -> str:
+    return T2_BANNER_MINIMAL if minimal else T2_BANNER
+
+
+# -----------------------------------------------------------------------------
+# Table formatting utilities
+# -----------------------------------------------------------------------------
+
+
+def t2_table_row(cells: List[str], widths: List[int], sep: str = " | ") -> str:
+    padded = []
+    for i, c in enumerate(cells):
+        w = widths[i] if i < len(widths) else 12
+        padded.append(c[:w].ljust(w) if len(c) <= w else c[: w - 3] + "...")
+    return sep.join(padded)
+
+
+def t2_table_header(headers: List[str], widths: Optional[List[int]] = None) -> str:
+    w = widths or [14] * len(headers)
+    return t2_table_row(headers, w)
+
+
+def t2_table_separator(num_cols: int, width: int = 14) -> str:
+    return "  " + "-" * (num_cols * (width + 3) - 3)
+
+
+# -----------------------------------------------------------------------------
+# Mission stats aggregation
+# -----------------------------------------------------------------------------
+
+
+def t2_mission_stats(missions: List[MissionSlot]) -> Dict[str, Any]:
+    if not missions:
+        return {"count": 0, "by_phase": {}, "terminated_count": 0}
+    by_phase: Dict[int, int] = {}
+    term_count = 0
+    for m in missions:
+        by_phase[m.phase] = by_phase.get(m.phase, 0) + 1
+        if m.terminated:
+            term_count += 1
