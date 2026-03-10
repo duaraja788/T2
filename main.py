@@ -619,3 +619,72 @@ def t2_validate_bytes32(hex_str: str) -> bool:
 
 
 def t2_encode_mission_params(mission_id: int, payload_hash: str, deadline_block: int) -> Dict[str, Any]:
+    return {
+        "mission_id": mission_id,
+        "payload_hash": payload_hash,
+        "deadline_block": deadline_block,
+    }
+
+
+def t2_decode_mission_from_dict(d: Dict[str, Any]) -> Optional[MissionSlot]:
+    try:
+        mid = int(d["mission_id"])
+        ph = str(d.get("payload_hash", T2_EMPTY_BYTES32))
+        dl = int(d["deadline_block"])
+        qb = int(d.get("queued_block", 0))
+        phase = int(d.get("phase", 1))
+        term = bool(d.get("terminated", False))
+        bound = d.get("bound_target") or None
+        last_exec = int(d.get("last_executed_block", 0))
+        nonce = int(d.get("nonce", 0))
+        return MissionSlot(
+            mission_id=mid,
+            payload_hash=ph,
+            deadline_block=dl,
+            queued_block=qb,
+            phase=phase,
+            terminated=term,
+            bound_target=bound,
+            last_executed_block=last_exec,
+            nonce=nonce,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+# -----------------------------------------------------------------------------
+# Batch and export helpers
+# -----------------------------------------------------------------------------
+
+
+def t2_export_missions_to_json(missions: List[MissionSlot]) -> str:
+    return json.dumps([m.to_dict() for m in missions], indent=2)
+
+
+def t2_import_missions_from_json(json_str: str) -> List[MissionSlot]:
+    data = json.loads(json_str)
+    out = []
+    for item in data if isinstance(data, list) else [data]:
+        m = t2_decode_mission_from_dict(item)
+        if m:
+            out.append(m)
+    return out
+
+
+def t2_mission_summary_table(missions: List[MissionSlot]) -> List[str]:
+    lines = []
+    lines.append("  mission_id | phase     | terminated | deadline_block | payload_hash (first 18)")
+    lines.append("  " + "-" * 90)
+    for m in missions:
+        ph_short = (m.payload_hash[:20] + "..") if len(m.payload_hash) > 20 else m.payload_hash
+        lines.append(f"  {m.mission_id:10} | {m.phase_name():10} | {str(m.terminated):10} | {m.deadline_block:14} | {ph_short}")
+    return lines
+
+
+def t2_filter_by_phase(missions: List[MissionSlot], phase: int) -> List[MissionSlot]:
+    return [m for m in missions if m.phase == phase]
+
+
+def t2_filter_by_terminated(missions: List[MissionSlot], terminated: bool) -> List[MissionSlot]:
+    return [m for m in missions if m.terminated == terminated]
+
