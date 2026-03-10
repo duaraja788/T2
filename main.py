@@ -1240,3 +1240,72 @@ def t2_cooldown_remaining(last_executed_block: int, current_block: int, cooldown
         return 0
     end = last_executed_block + cooldown_blocks
     if current_block >= end:
+        return 0
+    return end - current_block
+
+
+def t2_can_execute_now(
+    mission: MissionSlot,
+    current_block: int,
+    cooldown_blocks: int = 12,
+) -> bool:
+    if mission.terminated or mission.phase != 1:
+        return False
+    if current_block > mission.deadline_block:
+        return False
+    if mission.last_executed_block == 0:
+        return True
+    return current_block >= mission.last_executed_block + cooldown_blocks
+
+
+# -----------------------------------------------------------------------------
+# Deadline countdown
+# -----------------------------------------------------------------------------
+
+
+def t2_blocks_until_deadline(mission: MissionSlot, current_block: int) -> int:
+    if current_block >= mission.deadline_block:
+        return 0
+    return mission.deadline_block - current_block
+
+
+# -----------------------------------------------------------------------------
+# Colored phase output
+# -----------------------------------------------------------------------------
+
+
+def t2_phase_color(phase: int) -> Callable[[str], str]:
+    if phase == 1:
+        return t2_yellow_text
+    if phase == 2:
+        return t2_green_text
+    if phase == 3:
+        return t2_red_text
+    return lambda s: s
+
+
+# -----------------------------------------------------------------------------
+# Single mission display (compact)
+# -----------------------------------------------------------------------------
+
+
+def t2_mission_line(m: MissionSlot) -> str:
+    return f"  #{m.mission_id}  {m.phase_name():10}  terminated={m.terminated}  deadline={m.deadline_block}  payload={t2_shorten_hash(m.payload_hash)}"
+
+
+# -----------------------------------------------------------------------------
+# Gas estimation stubs (for future use)
+# -----------------------------------------------------------------------------
+
+T2_GAS_QUEUE_MISSION = 120_000
+T2_GAS_EXECUTE_MISSION = 80_000
+T2_GAS_TERMINATE_MISSION = 60_000
+T2_GAS_BIND_TARGET = 70_000
+
+
+def t2_estimate_gas_queue() -> int:
+    return T2_GAS_QUEUE_MISSION
+
+
+def t2_estimate_gas_execute() -> int:
+    return T2_GAS_EXECUTE_MISSION
