@@ -1309,3 +1309,72 @@ def t2_estimate_gas_queue() -> int:
 
 def t2_estimate_gas_execute() -> int:
     return T2_GAS_EXECUTE_MISSION
+
+
+def cmd_gas_estimates(config: T2Config) -> int:
+    print(t2_cyan_text("  Gas estimates (stub):"))
+    print(f"    queueMission:     {t2_estimate_gas_queue()}")
+    print(f"    executeMission:  {t2_estimate_gas_execute()}")
+    print(f"    terminateMission: {T2_GAS_TERMINATE_MISSION}")
+    print(f"    bindTarget:      {T2_GAS_BIND_TARGET}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Bytes32 from string (reusable)
+# -----------------------------------------------------------------------------
+
+
+def t2_string_to_bytes32(s: str) -> str:
+    return t2_bytes32_hex(s.encode("utf-8"))
+
+
+def t2_bytes_to_bytes32(b: bytes) -> str:
+    return t2_bytes32_hex(b)
+
+
+# -----------------------------------------------------------------------------
+# Mission ID generator (local sim)
+# -----------------------------------------------------------------------------
+
+
+def t2_next_local_mission_id(store: T2LocalMissionStore) -> int:
+    return store.next_mission_id()
+
+
+# -----------------------------------------------------------------------------
+# Contract roles (for display)
+# -----------------------------------------------------------------------------
+
+T2_ROLES = ["executor", "overseer", "guardian"]
+
+
+def t2_role_display_names() -> List[str]:
+    return list(T2_ROLES)
+
+
+# -----------------------------------------------------------------------------
+# Error messages (aligned with contract errors)
+# -----------------------------------------------------------------------------
+
+T2_ERR_NOT_EXECUTOR = "TX5_NotExecutor"
+T2_ERR_NOT_OVERSEER = "TX5_NotOverseer"
+T2_ERR_INVALID_MISSION_ID = "TX5_InvalidMissionId"
+T2_ERR_MISSION_ALREADY_TERMINATED = "TX5_MissionAlreadyTerminated"
+T2_ERR_REENTRANCY = "TX5_ReentrancyLock"
+T2_ERR_PAUSED = "TX5_RegistryPaused"
+
+
+def t2_error_message(err_code: str) -> str:
+    return err_code.replace("TX5_", "Contract error: ")
+
+
+# -----------------------------------------------------------------------------
+# Version info dict
+# -----------------------------------------------------------------------------
+
+
+def t2_version_info() -> Dict[str, Any]:
+    return {
+        "app": T2_APP_NAME,
+        "display_name": T2_DISPLAY_NAME,
