@@ -895,3 +895,72 @@ T2_VIEW_SELECTORS = [
     "checkCooldown(uint256)",
 ]
 
+
+def cmd_abi_selectors(config: T2Config) -> int:
+    for sel in T2_VIEW_SELECTORS:
+        print(f"  {sel}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Mission lifecycle simulation (local only)
+# -----------------------------------------------------------------------------
+
+
+def t2_simulate_mission_lifecycle(
+    store: T2LocalMissionStore,
+    payload: str,
+    deadline_offset: int,
+    result_hash: Optional[str] = None,
+) -> Tuple[bool, str]:
+    """Queue a mission, advance block, execute, return (success, message)."""
+    ph = t2_bytes32_hex(payload.encode("utf-8"))
+    current = store._current_block
+    deadline = current + deadline_offset
+    mid = store.queue(ph, deadline)
+    store._current_block += 1
+    rh = result_hash or t2_random_bytes32()
+    ok = store.execute(mid, rh)
+    if ok:
+        return True, f"Mission {mid} queued and executed."
+    return False, f"Mission {mid} queued but execution failed."
+
+
+def cmd_simulate(config: T2Config, local: T2LocalMissionStore, payload: str, offset: int) -> int:
+    ok, msg = t2_simulate_mission_lifecycle(local, payload, offset)
+    if ok:
+        print(t2_green_text(f"  {msg}"))
+    else:
+        print(t2_red_text(f"  {msg}"))
+    return 0 if ok else 1
+
+
+# -----------------------------------------------------------------------------
+# Chain ID helpers
+# -----------------------------------------------------------------------------
+
+T2_CHAIN_NAMES = {
+    1: "mainnet",
+    11155111: "sepolia",
+    8453: "base",
+    137: "polygon",
+    42161: "arbitrum_one",
+    10: "optimism",
+}
+
+
+def t2_chain_name(chain_id: int) -> str:
+    return T2_CHAIN_NAMES.get(chain_id, f"chain_{chain_id}")
+
+
+def cmd_chain_info(config: T2Config) -> int:
+    print(t2_cyan_text(f"  chain_id: {config.chain_id}  name: {t2_chain_name(config.chain_id)}"))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Logging stub (no external logger)
+# -----------------------------------------------------------------------------
+
+
+def t2_log(level: str, message: str) -> None:
