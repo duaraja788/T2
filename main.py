@@ -274,3 +274,72 @@ class MissionSlot:
 
 def t2_bytes32_hex(data: Union[bytes, str]) -> str:
     if isinstance(data, str):
+        data = data.encode("utf-8")
+    h = hashlib.sha3_256(data) if hasattr(hashlib, "sha3_256") else hashlib.sha256(data)
+    return "0x" + h.hex()
+
+
+def t2_random_bytes32() -> str:
+    raw = os.urandom(32)
+    return "0x" + raw.hex()
+
+
+def t2_payload_hash(payload: bytes) -> str:
+    return t2_bytes32_hex(payload)
+
+
+# -----------------------------------------------------------------------------
+# Contract ABI (minimal for T5_execute)
+# -----------------------------------------------------------------------------
+
+T2_CONTRACT_ABI = [
+    {"inputs": [], "stateMutability": "nonpayable", "type": "constructor"},
+    {"inputs": [], "name": "TX5_NotExecutor", "type": "error"},
+    {"inputs": [], "name": "TX5_NotOverseer", "type": "error"},
+    {"inputs": [], "name": "TX5_InvalidMissionId", "type": "error"},
+    {"inputs": [], "name": "TX5_MissionAlreadyTerminated", "type": "error"},
+    {"inputs": [], "name": "TX5_ReentrancyLock", "type": "error"},
+    {"inputs": [], "name": "TX5_RegistryPaused", "type": "error"},
+    {"inputs": [{"internalType": "uint256", "name": "missionId", "type": "uint256"}, {"internalType": "bytes32", "name": "payloadHash", "type": "bytes32"}, {"internalType": "uint256", "name": "deadlineBlock", "type": "uint256"}], "name": "queueMission", "outputs": [{"internalType": "uint256", "name": "missionId", "type": "uint256"}], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "missionId", "type": "uint256"}, {"internalType": "bytes32", "name": "resultHash", "type": "bytes32"}], "name": "executeMissionWithResult", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "missionId", "type": "uint256"}], "name": "terminateMission", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "missionId", "type": "uint256"}], "name": "getMission", "outputs": [{"internalType": "bytes32", "name": "payloadHash", "type": "bytes32"}, {"internalType": "uint256", "name": "deadlineBlock", "type": "uint256"}, {"internalType": "uint256", "name": "queuedBlock", "type": "uint256"}, {"internalType": "uint8", "name": "phase", "type": "uint8"}, {"internalType": "bool", "name": "terminated", "type": "bool"}, {"internalType": "address", "name": "boundTarget", "type": "address"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "nextMissionId", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "quoteIdentifier", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "pure", "type": "function"},
+    {"inputs": [], "name": "version", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "pure", "type": "function"},
+    {"inputs": [], "name": "registryPaused", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
+]
+
+
+# -----------------------------------------------------------------------------
+# Web3 / contract client
+# -----------------------------------------------------------------------------
+
+
+class T2ContractClient:
+    def __init__(self, rpc_url: str, contract_address: Optional[str] = None, chain_id: int = 1):
+        self.rpc_url = rpc_url
+        self.chain_id = chain_id
+        self.contract_address = contract_address
+        self._w3: Optional[Any] = None
+        self._contract: Optional[Any] = None
+
+    def connect(self) -> bool:
+        if not HAS_WEB3:
+            return False
+        try:
+            self._w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+            if not self._w3.is_connected():
+                return False
+            if self.contract_address:
+                self._contract = self._w3.eth.contract(
+                    address=Web3.to_checksum_address(self.contract_address),
+                    abi=T2_CONTRACT_ABI,
+                )
+            return True
+        except Exception:
+            return False
+
+    def is_connected(self) -> bool:
+        return self._w3 is not None and self._w3.is_connected()
+
