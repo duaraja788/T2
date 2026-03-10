@@ -964,3 +964,72 @@ def cmd_chain_info(config: T2Config) -> int:
 
 
 def t2_log(level: str, message: str) -> None:
+    ts = time.strftime(T2_DATE_FORMAT, time.localtime())
+    print(f"{ts} [{level}] T2: {message}")
+
+
+def t2_log_debug(msg: str) -> None:
+    t2_log("DEBUG", msg)
+
+
+def t2_log_info(msg: str) -> None:
+    t2_log("INFO", msg)
+
+
+def t2_log_warning(msg: str) -> None:
+    t2_log("WARNING", msg)
+
+
+def t2_log_error(msg: str) -> None:
+    t2_log("ERROR", msg)
+
+
+# -----------------------------------------------------------------------------
+# Retry logic for RPC (generic)
+# -----------------------------------------------------------------------------
+
+
+def t2_retry_rpc(func: Callable[[], Any], max_retries: int = T2_MAX_RETRIES, delay: float = T2_RETRY_DELAY_SEC) -> Any:
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            last_err = e
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+    raise last_err
+
+
+# -----------------------------------------------------------------------------
+# Hex and number formatting
+# -----------------------------------------------------------------------------
+
+
+def t2_hex_to_int(hex_str: str) -> int:
+    if hex_str.startswith("0x"):
+        hex_str = hex_str[2:]
+    return int(hex_str, 16)
+
+
+def t2_int_to_hex(n: int, pad_bytes: int = 32) -> str:
+    w = pad_bytes * 2
+    h = hex(n)[2:].lower()
+    if len(h) > w:
+        return "0x" + h[-w:]
+    return "0x" + h.zfill(w)
+
+
+def t2_shorten_hash(h: str, prefix: int = 8, suffix: int = 6) -> str:
+    if len(h) <= prefix + suffix + 2:
+        return h
+    return h[: 2 + prefix] + "..." + h[-suffix:]
+
+
+# -----------------------------------------------------------------------------
+# Default payloads for demos
+# -----------------------------------------------------------------------------
+
+T2_DEMO_PAYLOADS = [
+    "terminate_target_alpha",
+    "acquire_resource_beta",
