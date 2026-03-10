@@ -343,3 +343,72 @@ class T2ContractClient:
     def is_connected(self) -> bool:
         return self._w3 is not None and self._w3.is_connected()
 
+    def next_mission_id(self) -> Optional[int]:
+        if not self._contract:
+            return None
+        try:
+            return self._contract.functions.nextMissionId().call()
+        except Exception:
+            return None
+
+    def get_mission(self, mission_id: int) -> Optional[MissionSlot]:
+        if not self._contract:
+            return None
+        try:
+            t = self._contract.functions.getMission(mission_id).call()
+            payload_hash = "0x" + t[0].hex() if hasattr(t[0], "hex") else str(t[0])
+            bound = t[5]
+            bound_str = bound if isinstance(bound, str) else (bound if bound else "")
+            return MissionSlot(
+                mission_id=mission_id,
+                payload_hash=payload_hash,
+                deadline_block=t[1],
+                queued_block=t[2],
+                phase=t[3],
+                terminated=t[4],
+                bound_target=bound_str or None,
+            )
+        except Exception:
+            return None
+
+    def quote_identifier(self) -> str:
+        if not self._contract:
+            return T2_QUOTE
+        try:
+            return self._contract.functions.quoteIdentifier().call()
+        except Exception:
+            return T2_QUOTE
+
+    def version(self) -> Optional[int]:
+        if not self._contract:
+            return None
+        try:
+            return self._contract.functions.version().call()
+        except Exception:
+            return None
+
+    def is_paused(self) -> bool:
+        if not self._contract:
+            return False
+        try:
+            return self._contract.functions.registryPaused().call()
+        except Exception:
+            return False
+
+    def block_number(self) -> Optional[int]:
+        if not self._w3:
+            return None
+        try:
+            return self._w3.eth.block_number
+        except Exception:
+            return None
+
+
+# -----------------------------------------------------------------------------
+# Local mission store (when no contract)
+# -----------------------------------------------------------------------------
+
+
+class T2LocalMissionStore:
+    def __init__(self):
+        self._missions: Dict[int, MissionSlot] = {}
