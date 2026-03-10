@@ -826,3 +826,72 @@ def cmd_validate_address(config: T2Config, address: str) -> int:
 def cmd_hash_payload(config: T2Config, payload: str) -> int:
     h = t2_bytes32_hex(payload.encode("utf-8"))
     print(t2_green_text(f"  payload_hash: {h}"))
+    return 0
+
+
+def cmd_random_bytes32(config: T2Config) -> int:
+    print(t2_green_text(f"  {t2_random_bytes32()}"))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Contract client extended methods (read-only)
+# -----------------------------------------------------------------------------
+
+
+def t2_client_get_config(client: T2ContractClient) -> Optional[Dict[str, Any]]:
+    if not client or not client._contract:
+        return None
+    try:
+        max_m = client._contract.functions.maxMissions().call()
+        cooldown = client._contract.functions.cooldownBlocks().call()
+        cap = client._contract.functions.withdrawCapWei().call()
+        ver = client._contract.functions.version().call()
+        return {"max_missions": max_m, "cooldown_blocks": cooldown, "withdraw_cap_wei": cap, "version": ver}
+    except Exception:
+        return None
+
+
+def cmd_contract_config(config: T2Config, client: Optional[T2ContractClient]) -> int:
+    if not client or not client.is_connected():
+        print(t2_red_text("  Not connected to contract."))
+        return 1
+    cfg = t2_client_get_config(client)
+    if not cfg:
+        print(t2_red_text("  Could not read contract config."))
+        return 1
+    print(json.dumps(cfg, indent=2))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Simulated block advance (local store)
+# -----------------------------------------------------------------------------
+
+
+def cmd_advance_block(config: T2Config, local: T2LocalMissionStore, blocks: int) -> int:
+    local._current_block += blocks
+    print(t2_green_text(f"  Block advanced by {blocks}. Current block: {local._current_block}"))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# More ABI entries (view only) for reference
+# -----------------------------------------------------------------------------
+
+T2_VIEW_SELECTORS = [
+    "nextMissionId()",
+    "getMission(uint256)",
+    "quoteIdentifier()",
+    "version()",
+    "registryPaused()",
+    "maxMissions()",
+    "cooldownBlocks()",
+    "withdrawCapWei()",
+    "getConfig()",
+    "missionSummary(uint256)",
+    "isMissionExecutable(uint256)",
+    "blocksUntilDeadline(uint256)",
+    "checkCooldown(uint256)",
+]
+
