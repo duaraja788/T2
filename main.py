@@ -1171,3 +1171,72 @@ def t2_mission_stats(missions: List[MissionSlot]) -> Dict[str, Any]:
         by_phase[m.phase] = by_phase.get(m.phase, 0) + 1
         if m.terminated:
             term_count += 1
+    return {"count": len(missions), "by_phase": by_phase, "terminated_count": term_count}
+
+
+def cmd_stats(config: T2Config, local: T2LocalMissionStore) -> int:
+    ids = local.list_ids()
+    missions = [local.get_mission(mid) for mid in ids]
+    missions = [m for m in missions if m is not None]
+    stats = t2_mission_stats(missions)
+    print(json.dumps(stats, indent=2))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Environment and feature flags
+# -----------------------------------------------------------------------------
+
+T2_ENV_RPC = "T2_RPC_URL"
+T2_ENV_CONTRACT = "T2_CONTRACT_ADDRESS"
+T2_ENV_CHAIN_ID = "T2_CHAIN_ID"
+
+
+def t2_config_from_env(config: T2Config) -> T2Config:
+    if os.environ.get(T2_ENV_RPC):
+        config.rpc_url = os.environ[T2_ENV_RPC]
+    if os.environ.get(T2_ENV_CONTRACT):
+        config.contract_address = os.environ[T2_ENV_CONTRACT]
+    if os.environ.get(T2_ENV_CHAIN_ID):
+        try:
+            config.chain_id = int(os.environ[T2_ENV_CHAIN_ID])
+        except ValueError:
+            pass
+    return config
+
+
+def cmd_env_info(config: T2Config) -> int:
+    print(t2_cyan_text("  Environment variables (T2):"))
+    print(f"    {T2_ENV_RPC} = {os.environ.get(T2_ENV_RPC, '(not set)')}")
+    print(f"    {T2_ENV_CONTRACT} = {os.environ.get(T2_ENV_CONTRACT, '(not set)')}")
+    print(f"    {T2_ENV_CHAIN_ID} = {os.environ.get(T2_ENV_CHAIN_ID, '(not set)')}")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Help text for contract interaction
+# -----------------------------------------------------------------------------
+
+T2_HELP_CONTRACT = """
+  T2 connects to T5_execute (Terminus Vanguard) contract.
+  Set --contract and --rpc to query on-chain state.
+  Commands: status, get, list, contract-config, quote (from contract when connected).
+  Local-only: queue, execute, terminate, summary, export, import, advance-block, queue-demo, simulate.
+"""
+
+
+def cmd_help_contract(config: T2Config) -> int:
+    print(t2_cyan_text(T2_HELP_CONTRACT))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Cooldown calculation (mirror contract)
+# -----------------------------------------------------------------------------
+
+
+def t2_cooldown_remaining(last_executed_block: int, current_block: int, cooldown_blocks: int = 12) -> int:
+    if last_executed_block == 0:
+        return 0
+    end = last_executed_block + cooldown_blocks
+    if current_block >= end:
