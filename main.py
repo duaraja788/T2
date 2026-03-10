@@ -550,3 +550,72 @@ def cmd_list(config: T2Config, client: Optional[T2ContractClient], local: T2Loca
 
 
 def cmd_quote(config: T2Config) -> int:
+    print(t2_cyan_text(f"  {t2_random_quote()}"))
+    return 0
+
+
+def cmd_config_show(config: T2Config) -> int:
+    d = config.to_dict()
+    d.pop("executor_private_key", None)
+    print(json.dumps(d, indent=2))
+    return 0
+
+
+def cmd_config_set(args: argparse.Namespace, config: T2Config) -> int:
+    if getattr(args, "rpc_url", None):
+        config.rpc_url = args.rpc_url
+    if getattr(args, "chain_id", None) is not None:
+        config.chain_id = int(args.chain_id)
+    if getattr(args, "contract_address", None) is not None:
+        config.contract_address = args.contract_address or None
+    if getattr(args, "gas_limit", None) is not None:
+        config.gas_limit = int(args.gas_limit)
+    config.save()
+    print(t2_green_text("  Config saved."))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Animation (terminator-style scan)
+# -----------------------------------------------------------------------------
+
+
+def run_scan_animation(duration_sec: float = 1.5) -> None:
+    end = time.monotonic() + duration_sec
+    i = 0
+    chars = ["/", "-", "\\", "|"]
+    while time.monotonic() < end:
+        sys.stdout.write(f"\r  >>> SCANNING {chars[i % 4]} ")
+        sys.stdout.flush()
+        time.sleep(0.08)
+        i += 1
+    sys.stdout.write("\r  >>> SCAN COMPLETE.        \n")
+    sys.stdout.flush()
+
+
+# -----------------------------------------------------------------------------
+# Validation and encoding helpers
+# -----------------------------------------------------------------------------
+
+
+def t2_validate_mission_id(mission_id: int) -> bool:
+    return 0 <= mission_id < 88_888
+
+
+def t2_validate_address(addr: str) -> bool:
+    if not addr or not addr.startswith("0x"):
+        return False
+    rest = addr[2:].lower()
+    if len(rest) != 40:
+        return False
+    return all(c in "0123456789abcdef" for c in rest)
+
+
+def t2_validate_bytes32(hex_str: str) -> bool:
+    if not hex_str.startswith("0x"):
+        return False
+    rest = hex_str[2:].lower()
+    return len(rest) == 64 and all(c in "0123456789abcdef" for c in rest)
+
+
+def t2_encode_mission_params(mission_id: int, payload_hash: str, deadline_block: int) -> Dict[str, Any]:
