@@ -1378,3 +1378,72 @@ def t2_version_info() -> Dict[str, Any]:
     return {
         "app": T2_APP_NAME,
         "display_name": T2_DISPLAY_NAME,
+        "version": T2_VERSION,
+        "quote": T2_QUOTE,
+        "has_web3": HAS_WEB3,
+    }
+
+
+def cmd_version_full(config: T2Config) -> int:
+    print(json.dumps(t2_version_info(), indent=2))
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Default deadline offset (blocks)
+# -----------------------------------------------------------------------------
+
+T2_DEFAULT_DEADLINE_OFFSET = 100
+
+
+def t2_default_deadline_blocks() -> int:
+    return T2_DEFAULT_DEADLINE_OFFSET
+
+
+def t2_cooldown_blocks_default() -> int:
+    return 12
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=f"{T2_APP_NAME} — {T2_DISPLAY_NAME} CLI for T5_execute")
+    parser.add_argument("--no-banner", action="store_true", help="Skip banner")
+    parser.add_argument("--rpc", default=None, help="RPC URL")
+    parser.add_argument("--contract", default=None, help="Contract address")
+    sub = parser.add_subparsers(dest="command", help="Commands")
+
+    p_status = sub.add_parser("status", help="Show status and quote")
+    p_status.set_defaults(func=lambda a, c, cl, loc: cmd_status(c, cl, loc))
+
+    p_queue = sub.add_parser("queue", help="Queue a mission (local)")
+    p_queue.add_argument("payload", nargs="?", default="default_payload", help="Payload string")
+    p_queue.add_argument("--deadline-blocks", type=int, default=100, help="Blocks until deadline")
+    p_queue.set_defaults(func=lambda a, c, cl, loc: cmd_queue(c, cl, loc, a.payload, a.deadline_blocks))
+
+    p_exec = sub.add_parser("execute", help="Execute mission (local)")
+    p_exec.add_argument("mission_id", type=int, help="Mission ID")
+    p_exec.add_argument("--result-hash", default=None, help="Result hash (optional)")
+    p_exec.set_defaults(func=lambda a, c, cl, loc: cmd_execute(c, cl, loc, a.mission_id, a.result_hash))
+
+    p_term = sub.add_parser("terminate", help="Terminate mission (local)")
+    p_term.add_argument("mission_id", type=int, help="Mission ID")
+    p_term.set_defaults(func=lambda a, c, cl, loc: cmd_terminate(c, cl, loc, a.mission_id))
+
+    p_get = sub.add_parser("get", help="Get mission by ID")
+    p_get.add_argument("mission_id", type=int, help="Mission ID")
+    p_get.set_defaults(func=lambda a, c, cl, loc: cmd_get_mission(c, cl, loc, a.mission_id))
+
+    p_list = sub.add_parser("list", help="List missions")
+    p_list.add_argument("--limit", type=int, default=20, help="Max to show")
+    p_list.set_defaults(func=lambda a, c, cl, loc: cmd_list(c, cl, loc, a.limit))
+
+    p_quote = sub.add_parser("quote", help="Print random quote")
+    p_quote.set_defaults(func=lambda a, c, cl, loc: cmd_quote(c))
+
+    p_cfg = sub.add_parser("config", help="Show config")
+    p_cfg.set_defaults(func=lambda a, c, cl, loc: cmd_config_show(c))
+
