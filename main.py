@@ -1447,3 +1447,72 @@ def main() -> int:
     p_cfg = sub.add_parser("config", help="Show config")
     p_cfg.set_defaults(func=lambda a, c, cl, loc: cmd_config_show(c))
 
+    p_cfg_set = sub.add_parser("config-set", help="Set config")
+    p_cfg_set.add_argument("--rpc-url", default=None)
+    p_cfg_set.add_argument("--chain-id", default=None)
+    p_cfg_set.add_argument("--contract-address", default=None)
+    p_cfg_set.add_argument("--gas-limit", default=None)
+    p_cfg_set.set_defaults(func=lambda a, c, cl, loc: cmd_config_set(a, c))
+
+    p_scan = sub.add_parser("scan", help="Run scan animation")
+    p_scan.add_argument("--duration", type=float, default=1.5, help="Seconds")
+    p_scan.set_defaults(func=lambda a, c, cl, loc: (run_scan_animation(a.duration), 0)[1])
+
+    p_summary = sub.add_parser("summary", help="Table summary of local missions")
+    p_summary.set_defaults(func=lambda a, c, cl, loc: cmd_summary(c, cl, loc))
+
+    p_export = sub.add_parser("export", help="Export missions to JSON file")
+    p_export.add_argument("path", help="Output file path")
+    p_export.set_defaults(func=lambda a, c, cl, loc: cmd_export(c, loc, a.path))
+
+    p_import = sub.add_parser("import", help="Import missions from JSON file")
+    p_import.add_argument("path", help="Input file path")
+    p_import.set_defaults(func=lambda a, c, cl, loc: cmd_import(c, loc, a.path))
+
+    p_executable = sub.add_parser("executable", help="List executable missions (local)")
+    p_executable.add_argument("--block", type=int, default=None, help="Current block (default: local sim)")
+    p_executable.add_argument("--cooldown", type=int, default=12, help="Cooldown blocks")
+    p_executable.set_defaults(func=lambda a, c, cl, loc: cmd_executable(c, loc, a.block, a.cooldown))
+
+    p_version = sub.add_parser("version", help="Show app version and quote")
+    p_version.set_defaults(func=lambda a, c, cl, loc: cmd_version(c))
+
+    p_banner = sub.add_parser("banner", help="Print full banner and claws")
+    p_banner.set_defaults(func=lambda a, c, cl, loc: cmd_banner(c))
+
+    p_validate_addr = sub.add_parser("validate-address", help="Validate EIP-55 address")
+    p_validate_addr.add_argument("address", help="Address to validate")
+    p_validate_addr.set_defaults(func=lambda a, c, cl, loc: cmd_validate_address(c, a.address))
+
+    p_hash = sub.add_parser("hash-payload", help="Hash payload string to bytes32")
+    p_hash.add_argument("payload", nargs="?", default="default", help="Payload string")
+    p_hash.set_defaults(func=lambda a, c, cl, loc: cmd_hash_payload(c, a.payload))
+
+    p_rand32 = sub.add_parser("random-bytes32", help="Generate random bytes32 hex")
+    p_rand32.set_defaults(func=lambda a, c, cl, loc: cmd_random_bytes32(c))
+
+    p_contract_cfg = sub.add_parser("contract-config", help="Print contract config (when connected)")
+    p_contract_cfg.set_defaults(func=lambda a, c, cl, loc: cmd_contract_config(c, cl))
+
+    p_advance = sub.add_parser("advance-block", help="Advance local sim block (for testing)")
+    p_advance.add_argument("blocks", type=int, default=1, nargs="?", help="Blocks to advance")
+    p_advance.set_defaults(func=lambda a, c, cl, loc: cmd_advance_block(c, loc, a.blocks))
+
+    p_abi = sub.add_parser("abi-selectors", help="List view selectors")
+    p_abi.set_defaults(func=lambda a, c, cl, loc: cmd_abi_selectors(c))
+
+    p_simulate = sub.add_parser("simulate", help="Simulate queue+execute one mission (local)")
+    p_simulate.add_argument("payload", nargs="?", default="sim_payload", help="Payload string")
+    p_simulate.add_argument("--offset", type=int, default=50, help="Deadline block offset")
+    p_simulate.set_defaults(func=lambda a, c, cl, loc: cmd_simulate(c, loc, a.payload, a.offset))
+
+    p_chain = sub.add_parser("chain-info", help="Show chain id and name")
+    p_chain.set_defaults(func=lambda a, c, cl, loc: cmd_chain_info(c))
+
+    p_queue_demo = sub.add_parser("queue-demo", help="Queue N demo missions (local)")
+    p_queue_demo.add_argument("count", type=int, nargs="?", default=3, help="Number of missions")
+    p_queue_demo.add_argument("--deadline-blocks", type=int, default=100, help="Blocks until deadline")
+    p_queue_demo.set_defaults(func=lambda a, c, cl, loc: cmd_queue_demo(c, loc, a.count, a.deadline_blocks))
+
+    p_validate_cfg = sub.add_parser("validate-config", help="Validate current config")
+    p_validate_cfg.set_defaults(func=lambda a, c, cl, loc: cmd_validate_config(c))
