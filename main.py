@@ -136,3 +136,72 @@ T2_TERMINATOR_LINES = [
     ">>> REGISTRY PAUSED",
     ">>> GUARDIAN OVERRIDE",
 ]
+
+
+def t2_random_quote() -> str:
+    return random.choice(T2_QUOTES)
+
+
+def t2_scan_line() -> str:
+    return "=" * 60 + "\n>>> SCAN COMPLETE\n" + "=" * 60
+
+
+def t2_red_text(s: str) -> str:
+    if os.name == "nt" and not os.environ.get("TERM"):
+        return s
+    return f"\033[91m{s}\033[0m"
+
+
+def t2_cyan_text(s: str) -> str:
+    if os.name == "nt" and not os.environ.get("TERM"):
+        return s
+    return f"\033[96m{s}\033[0m"
+
+
+def t2_green_text(s: str) -> str:
+    if os.name == "nt" and not os.environ.get("TERM"):
+        return s
+    return f"\033[92m{s}\033[0m"
+
+
+def t2_yellow_text(s: str) -> str:
+    if os.name == "nt" and not os.environ.get("TERM"):
+        return s
+    return f"\033[93m{s}\033[0m"
+
+
+# -----------------------------------------------------------------------------
+# Config
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class T2Config:
+    rpc_url: str = T2_DEFAULT_RPC
+    chain_id: int = T2_CHAIN_ID_MAINNET
+    contract_address: Optional[str] = None
+    executor_private_key: Optional[str] = None
+    gas_limit: int = T2_GAS_LIMIT_DEFAULT
+    gas_multiplier: float = T2_GAS_MULTIPLIER
+    show_banner: bool = True
+    theme: str = "terminator"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "rpc_url": self.rpc_url,
+            "chain_id": self.chain_id,
+            "contract_address": self.contract_address,
+            "gas_limit": self.gas_limit,
+            "gas_multiplier": self.gas_multiplier,
+            "show_banner": self.show_banner,
+            "theme": self.theme,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "T2Config":
+        return cls(
+            rpc_url=d.get("rpc_url", T2_DEFAULT_RPC),
+            chain_id=int(d.get("chain_id", T2_CHAIN_ID_MAINNET)),
+            contract_address=d.get("contract_address"),
+            executor_private_key=d.get("executor_private_key"),
+            gas_limit=int(d.get("gas_limit", T2_GAS_LIMIT_DEFAULT)),
