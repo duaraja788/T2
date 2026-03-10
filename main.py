@@ -481,3 +481,72 @@ def cmd_status(config: T2Config, client: Optional[T2ContractClient], local: T2Lo
         print(t2_green_text(f"  Paused: {client.is_paused()}"))
     else:
         print(t2_yellow_text("  No RPC/contract connected. Using local store."))
+        print(t2_yellow_text(f"  Local next mission ID: {local.next_mission_id()}"))
+        print(t2_yellow_text(f"  Local missions: {len(local.list_ids())}"))
+    print(t2_scan_line())
+    return 0
+
+
+def cmd_queue(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore, payload: str, deadline_blocks: int) -> int:
+    payload_hash = t2_bytes32_hex(payload.encode("utf-8"))
+    if client and client.is_connected() and client.contract_address:
+        print(t2_red_text("  On-chain queue not implemented in this stub (no private key). Use local."))
+    current_block = local._current_block if hasattr(local, "_current_block") else 1000
+    deadline_block = current_block + deadline_blocks
+    mid = local.queue(payload_hash, deadline_block)
+    print(t2_green_text(f"  Mission queued. mission_id={mid}"))
+    print(t2_green_text(f"  payload_hash={payload_hash}"))
+    print(t2_green_text(f"  deadline_block={deadline_block}"))
+    print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
+    return 0
+
+
+def cmd_execute(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore, mission_id: int, result_hash: Optional[str]) -> int:
+    rh = result_hash or t2_random_bytes32()
+    if local.execute(mission_id, rh):
+        print(t2_green_text(f"  Mission {mission_id} executed. result_hash={rh}"))
+        print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
+        return 0
+    print(t2_red_text(f"  Mission {mission_id} not found or not executable."))
+    return 1
+
+
+def cmd_terminate(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore, mission_id: int) -> int:
+    if local.terminate(mission_id):
+        print(t2_green_text(f"  Mission {mission_id} terminated."))
+        print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
+        return 0
+    print(t2_red_text(f"  Mission {mission_id} not found."))
+    return 1
+
+
+def cmd_get_mission(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore, mission_id: int) -> int:
+    m = client.get_mission(mission_id) if client and client.contract_address else local.get_mission(mission_id)
+    if not m:
+        print(t2_red_text(f"  Mission {mission_id} not found."))
+        return 1
+    print(json.dumps(m.to_dict(), indent=2))
+    return 0
+
+
+def cmd_list(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore, limit: int) -> int:
+    if client and client.is_connected() and client.contract_address:
+        nid = client.next_mission_id()
+        if nid is not None:
+            print(t2_cyan_text(f"  Contract next mission ID: {nid}"))
+            for i in range(min(nid, limit)):
+                m = client.get_mission(i)
+                if m:
+                    print(json.dumps(m.to_dict(), indent=2))
+                    print("  ---")
+        return 0
+    ids = local.list_ids()[:limit]
+    for mid in ids:
+        m = local.get_mission(mid)
+        if m:
+            print(json.dumps(m.to_dict(), indent=2))
+            print("  ---")
+    return 0
+
+
+def cmd_quote(config: T2Config) -> int:
