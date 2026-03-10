@@ -757,3 +757,72 @@ def cmd_summary(config: T2Config, client: Optional[T2ContractClient], local: T2L
     print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
     return 0
 
+
+def cmd_export(config: T2Config, local: T2LocalMissionStore, path: str) -> int:
+    ids = local.list_ids()
+    missions = [local.get_mission(mid) for mid in ids]
+    missions = [m for m in missions if m is not None]
+    js = t2_export_missions_to_json(missions)
+    with open(path, "w") as f:
+        f.write(js)
+    print(t2_green_text(f"  Exported {len(missions)} missions to {path}"))
+    return 0
+
+
+def cmd_import(config: T2Config, local: T2LocalMissionStore, path: str) -> int:
+    with open(path) as f:
+        missions = t2_import_missions_from_json(f.read())
+    existing = set(local.list_ids())
+    count = 0
+    for m in missions:
+        if m.mission_id not in existing:
+            local._missions[m.mission_id] = m
+            if local._next_id <= m.mission_id:
+                local._next_id = m.mission_id + 1
+            count += 1
+    print(t2_green_text(f"  Imported {count} missions from {path}"))
+    return 0
+
+
+def cmd_executable(config: T2Config, local: T2LocalMissionStore, current_block: Optional[int], cooldown: int) -> int:
+    cb = current_block or local._current_block
+    ids = local.list_ids()
+    missions = [local.get_mission(mid) for mid in ids]
+    missions = [m for m in missions if m is not None]
+    executable = t2_filter_executable(missions, cb, cooldown)
+    print(t2_cyan_text(f"  Current block (sim): {cb}  Cooldown: {cooldown}"))
+    print(t2_green_text(f"  Executable missions: {len(executable)}"))
+    for m in executable:
+        print(f"    mission_id={m.mission_id}  deadline_block={m.deadline_block}")
+    return 0
+
+
+def cmd_version(config: T2Config) -> int:
+    print(t2_cyan_text(f"  {T2_APP_NAME} ({T2_DISPLAY_NAME}) version {T2_VERSION}"))
+    print(t2_yellow_text(f"  {t2_random_quote()}"))
+    return 0
+
+
+def cmd_banner(config: T2Config) -> int:
+    print(t2_cyan_text(T2_BANNER))
+    print(t2_red_text(T2_CLAWS))
+    print(t2_yellow_text(t2_ticker_line()))
+    return 0
+
+
+def cmd_validate_address(config: T2Config, address: str) -> int:
+    ok = t2_validate_address(address)
+    if ok:
+        try:
+            cs = t2_checksum_address(address)
+            print(t2_green_text(f"  Valid. Checksum: {cs}"))
+        except Exception as e:
+            print(t2_red_text(f"  Invalid: {e}"))
+    else:
+        print(t2_red_text("  Invalid address format."))
+    return 0 if ok else 1
+
+
+def cmd_hash_payload(config: T2Config, payload: str) -> int:
+    h = t2_bytes32_hex(payload.encode("utf-8"))
+    print(t2_green_text(f"  payload_hash: {h}"))
