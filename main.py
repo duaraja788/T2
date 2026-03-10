@@ -688,3 +688,72 @@ def t2_filter_by_phase(missions: List[MissionSlot], phase: int) -> List[MissionS
 def t2_filter_by_terminated(missions: List[MissionSlot], terminated: bool) -> List[MissionSlot]:
     return [m for m in missions if m.terminated == terminated]
 
+
+def t2_filter_executable(missions: List[MissionSlot], current_block: int, cooldown_blocks: int = 12) -> List[MissionSlot]:
+    out = []
+    for m in missions:
+        if m.terminated or m.phase != 1:
+            continue
+        if current_block > m.deadline_block:
+            continue
+        if m.last_executed_block and current_block < m.last_executed_block + cooldown_blocks:
+            continue
+        out.append(m)
+    return out
+
+
+# -----------------------------------------------------------------------------
+# More theme / display
+# -----------------------------------------------------------------------------
+
+
+T2_PHASE_BANNERS = {
+    1: ">>> PHASE: QUEUED — AWAITING EXECUTION",
+    2: ">>> PHASE: EXECUTED — MISSION COMPLETE",
+    3: ">>> PHASE: TERMINATED — HASTA LA VISTA",
+}
+
+
+def t2_phase_banner(phase: int) -> str:
+    return T2_PHASE_BANNERS.get(phase, ">>> PHASE: UNKNOWN")
+
+
+def t2_display_mission(m: MissionSlot, use_color: bool = True) -> str:
+    lines = [
+        f"  Mission ID: {m.mission_id}",
+        f"  Payload Hash: {m.payload_hash}",
+        f"  Deadline Block: {m.deadline_block}",
+        f"  Queued Block: {m.queued_block}",
+        f"  Phase: {m.phase_name()} ({m.phase})",
+        f"  Terminated: {m.terminated}",
+        f"  Bound Target: {m.bound_target or '(none)'}",
+        f"  Last Executed Block: {m.last_executed_block}",
+        f"  Nonce: {m.nonce}",
+    ]
+    text = "\n".join(lines)
+    if use_color:
+        return t2_cyan_text(text)
+    return text
+
+
+def t2_ticker_line() -> str:
+    return "  " + " * ".join(T2_TERMINATOR_LINES[:4]) + " "
+
+
+# -----------------------------------------------------------------------------
+# Additional CLI commands
+# -----------------------------------------------------------------------------
+
+
+def cmd_summary(config: T2Config, client: Optional[T2ContractClient], local: T2LocalMissionStore) -> int:
+    ids = local.list_ids()
+    missions = [local.get_mission(mid) for mid in ids]
+    missions = [m for m in missions if m is not None]
+    if not missions:
+        print(t2_yellow_text("  No missions in local store."))
+        return 0
+    for line in t2_mission_summary_table(missions):
+        print(line)
+    print(t2_yellow_text(f"  >>> {t2_random_quote()}"))
+    return 0
+
