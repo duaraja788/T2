@@ -1516,3 +1516,51 @@ def main() -> int:
 
     p_validate_cfg = sub.add_parser("validate-config", help="Validate current config")
     p_validate_cfg.set_defaults(func=lambda a, c, cl, loc: cmd_validate_config(c))
+
+    p_stats = sub.add_parser("stats", help="Mission stats (local)")
+    p_stats.set_defaults(func=lambda a, c, cl, loc: cmd_stats(c, loc))
+
+    p_env = sub.add_parser("env-info", help="Show T2 env vars")
+    p_env.set_defaults(func=lambda a, c, cl, loc: cmd_env_info(c))
+
+    p_help_contract = sub.add_parser("help-contract", help="Help for contract interaction")
+    p_help_contract.set_defaults(func=lambda a, c, cl, loc: cmd_help_contract(c))
+
+    p_gas = sub.add_parser("gas-estimates", help="Show gas estimate stubs")
+    p_gas.set_defaults(func=lambda a, c, cl, loc: cmd_gas_estimates(c))
+
+    p_ver_full = sub.add_parser("version-full", help="Full version info as JSON")
+    p_ver_full.set_defaults(func=lambda a, c, cl, loc: cmd_version_full(c))
+
+    args = parser.parse_args()
+    config = T2Config.load()
+    config = t2_config_from_env(config)
+    if args.no_banner:
+        config.show_banner = False
+    if getattr(args, "rpc", None):
+        config.rpc_url = args.rpc
+    if getattr(args, "contract", None):
+        config.contract_address = args.contract
+    config.save()
+
+    client: Optional[T2ContractClient] = None
+    if config.rpc_url:
+        client = T2ContractClient(config.rpc_url, config.contract_address, config.chain_id)
+        client.connect()
+    local = T2LocalMissionStore()
+
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return 0
+
+    if args.command == "config-set":
+        return cmd_config_set(args, config)
+    if args.command == "scan":
+        run_scan_animation(args.duration)
+        return 0
+
+    return args.func(args, config, client, local)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
